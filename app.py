@@ -1,90 +1,65 @@
 import streamlit as st
 from streamlit_agraph import agraph, Node, Edge, Config
 from langchain_groq import ChatGroq
-import json
-import os
 
-# 1. SETUP & PERMANENT STORAGE
 st.set_page_config(page_title="Zenith Lore Matrix", layout="wide")
-
-# File to store characters permanently
-DB_FILE = "lore_registry.json"
-
-def load_lore():
-    if os.path.exists(DB_FILE):
-        with open(DB_FILE, "r") as f:
-            return json.load(f)
-    return {
-        "William Afton": {"img": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/0/0b/Springtrap_FNAF3.png", "type": "human"},
-        "Freddy Fazbear": {"img": "https://upload.wikimedia.org/wikipedia/en/2/22/Fnaf_character_freddy_fazbear.png", "type": "animatronic"},
-        "The Puppet": {"img": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/1/10/The_Puppet.png", "type": "spirit"}
-    }
-
-def save_lore(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f)
-
-if "lore_db" not in st.session_state:
-    st.session_state.lore_db = load_lore()
 
 # Connect to AI
 llm = None
 if "GROQ_API_KEY" in st.secrets:
     llm = ChatGroq(groq_api_key=st.secrets["GROQ_API_KEY"], model_name="llama-3.3-70b-versatile")
 
-# 2. SIDEBAR: THE ARCHIVE COMMAND
+# 1. THE RELIABLE IMAGE DATABASE (Using Direct Links)
+CHARACTERS = {
+    "William Afton": {"img": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/ultra-ball.png", "color": "#800080"}, # Purple placeholder
+    "Gabriel (Freddy)": {"img": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png", "color": "#654321"}, # Replace these with your direct hosted URLs
+    "Springtrap": {"img": "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/123.png", "color": "#556B2F"},
+}
+
+# 2. SIDEBAR
 with st.sidebar:
     st.header("🗄️ ARCHIVE CONTROLS")
-    subject = st.selectbox("Current Subjects:", ["Main Terminal"] + list(st.session_state.lore_db.keys()))
-    
-    st.markdown("---")
-    st.subheader("Add New Entity")
-    new_char = st.text_input("Name (e.g. Scraptrap):")
-    new_img = st.text_input("Image URL:")
-    if st.button("Commit to Archive"):
-        if new_char and new_img:
-            st.session_state.lore_db[new_char] = {"img": new_img, "type": "custom"}
-            save_lore(st.session_state.lore_db)
-            st.success(f"{new_char} added to permanent records!")
-            st.rerun()
+    subject = st.selectbox("Select Subject:", ["Main Terminal"] + list(CHARACTERS.keys()))
 
-# 3. LORE DISPLAY (With Gabriel Fix)
+# 3. LORE CONTENT (Gabriel is NOT an Afton)
 if subject == "Main Terminal":
     st.title("👁️ ZENITH LORE ARCHIVE")
-    st.write(f"The matrix is currently tracking {len(st.session_state.lore_db)} entities.")
-    st.image("https://images.unsplash.com/photo-1614728263952-84ea206f99b6?w=1200", use_container_width=True)
+    st.markdown("### DATA SCAN: The Missing Children Incident vs Afton Family")
 else:
     st.header(f"📊 DATA ENTRY: {subject}")
     col1, col2 = st.columns([1, 2])
     with col1:
-        st.image(st.session_state.lore_db[subject]["img"], width=400)
+        st.image(CHARACTERS[subject]["img"], width=300)
     with col2:
         if llm:
-            with st.spinner("Analyzing Remnant..."):
-                # HARD-CODED LORE TRUTH
-                prompt = f"Provide a lore profile for {subject}. TRUTH: Freddy Fazbear is Gabriel. Describe their evolution and importance to the Afton story."
+            with st.spinner("Extracting Remnant..."):
+                # FORCED LORE RULES
+                prompt = f"""
+                Provide a lore profile for {subject}. 
+                STRICT RULES:
+                1. Gabriel is NOT William Afton's son. He is a victim who possesses Freddy.
+                2. William Afton's only children are Michael, Elizabeth, and the Crying Child.
+                3. Describe {subject}'s evolution and their contribution to the tragedy.
+                """
                 response = llm.invoke(prompt)
                 st.markdown(response.content)
 
-# 4. THE EVOLUTION MATRIX (With Connections)
+# 4. THE CONNECTION WEB
 st.markdown("---")
-st.subheader("🕸️ THE CONNECTION MATRIX")
+st.subheader("🕸️ THE EVOLUTION & CONNECTION MATRIX")
 
-nodes = []
-for name, data in st.session_state.lore_db.items():
-    nodes.append(Node(id=name, label=name, shape="circularImage", image=data["img"], size=35))
-
-# Logic for Afton Family/Evolution lines
-edges = [
-    Edge(source="William Afton", target="Freddy Fazbear", label="Killed Gabriel"),
-    Edge(source="The Puppet", target="Freddy Fazbear", label="Gave Life")
+nodes = [
+    Node(id="Afton", label="William Afton", shape="circularImage", image=CHARACTERS["William Afton"]["img"], size=30),
+    Node(id="Gabriel", label="Gabriel (Freddy)", shape="circularImage", image=CHARACTERS["Gabriel (Freddy)"]["img"], size=30),
+    Node(id="Springtrap", label="Springtrap", shape="circularImage", image=CHARACTERS["Springtrap"]["img"], size=30),
+    Node(id="Puppet", label="The Puppet (Charlie)", color="#FFFFFF", size=20)
 ]
 
-# Add specific evolution lines if the characters exist in your DB
-if "Springtrap" in st.session_state.lore_db:
-    edges.append(Edge(source="William Afton", target="Springtrap", label="Evolution"))
-if "Scraptrap" in st.session_state.lore_db:
-    edges.append(Edge(source="Springtrap", target="Scraptrap", label="Evolution"))
+edges = [
+    Edge(source="Afton", target="Gabriel", label="Murderer (MCI 1985)", color="red"),
+    Edge(source="Puppet", target="Gabriel", label="Gave Life", color="blue"),
+    Edge(source="Afton", target="Springtrap", label="Evolution (Springlock)", color="purple")
+]
 
-config = Config(width=1200, height=700, directed=True, nodeHighlightBehavior=True, highlightColor="#ff4b4b")
+config = Config(width=1200, height=600, directed=True, nodeHighlightBehavior=True)
 agraph(nodes=nodes, edges=edges, config=config)
