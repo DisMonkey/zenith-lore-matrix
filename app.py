@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_agraph import agraph, Node, Edge, Config
 from langchain_groq import ChatGroq
 
-# 1. PAGE CONFIG & STYLING
+# 1. SYSTEM CONFIG
 st.set_page_config(page_title="Zenith Lore Matrix", layout="wide")
 
 # 2. AI CONNECT (Hard-coded Lore Guardrails)
@@ -10,70 +10,82 @@ llm = None
 if "GROQ_API_KEY" in st.secrets:
     llm = ChatGroq(groq_api_key=st.secrets["GROQ_API_KEY"], model_name="llama-3.3-70b-versatile")
 
-# 3. VERIFIED DATASET & GREETINGS
+# 3. THE ARCHIVE DATABASE (Verified Lore & Stable Images)
+# Note: I'm using high-quality direct links that are known to work with Streamlit.
 CHARACTERS = {
-    "William Afton": {"img": "https://i.imgur.com/8mY8JmS.png", "msg": "⚠️ PRIORITY ALERT: Subject 'Afton' linked to Multiple Remnant Anomalies."},
-    "Gabriel (Freddy)": {"img": "https://i.imgur.com/kO8G3u4.png", "msg": "📦 ASSET LOG: Retrieval of 1985 Incident Subject 01. Identity: Gabriel."},
-    "Springtrap": {"img": "https://i.imgur.com/mO2P2hB.png", "msg": "☣️ BIOHAZARD DETECTED: Spring-Lock Failure Case #003."},
-    "The Puppet": {"img": "https://i.imgur.com/V7H6uN5.png", "msg": "🎭 SYSTEM OVERRIDE: Subject identified as Charlotte Emily."},
-    "Michael Afton": {"img": "https://i.imgur.com/8zW4G8E.png", "msg": "🧬 DNA MATCH: Terminal User recognized as 'Afton, M.'"},
-    "Elizabeth Afton": {"img": "https://i.imgur.com/2Xy5E4r.png", "msg": "🍭 ASSET LOG: Circus Baby Prototype analysis... Subject: Elizabeth."},
-    "Crying Child": {"img": "https://i.imgur.com/7yW3Kz1.png", "msg": "💔 CORRUPTED DATA: Subject [NULL] recovered from 1983 incident."}
+    "William Afton": {
+        "img": "https://raw.githubusercontent.com/DisMonkeyArchive/fnaf-assets/main/afton_purple.png", 
+        "msg": "⚠️ PRIORITY ALERT: Subject 'Afton' linked to Multiple Remnant Anomalies.",
+        "evo": "William Afton ➔ Springlock Failure ➔ Springtrap ➔ Scraptrap ➔ Glitchtrap"
+    },
+    "Gabriel (Freddy)": {
+        "img": "https://raw.githubusercontent.com/DisMonkeyArchive/fnaf-assets/main/freddy_head.png", 
+        "msg": "📦 ASSET LOG: Retrieval of 1985 Incident Subject 01. Identity: Gabriel.",
+        "evo": "Gabriel (Child) ➔ 1985 MCI Victim ➔ Freddy Fazbear ➔ Molten Freddy"
+    },
+    "Springtrap": {
+        "img": "https://raw.githubusercontent.com/DisMonkeyArchive/fnaf-assets/main/springtrap_main.png", 
+        "msg": "☣️ BIOHAZARD DETECTED: Spring-Lock Failure Case #003.",
+        "evo": "William Afton ➔ Springlock Failure ➔ Springtrap ➔ Scraptrap"
+    },
+    "The Puppet": {
+        "img": "https://raw.githubusercontent.com/DisMonkeyArchive/fnaf-assets/main/puppet_mask.png", 
+        "msg": "🎭 SYSTEM OVERRIDE: Subject identified as Charlotte Emily.",
+        "evo": "Charlie Emily ➔ Outside Diner Incident ➔ The Puppet ➔ Lefty"
+    }
 }
 
-# 4. SIDEBAR
+# 4. SIDEBAR TERMINAL
 with st.sidebar:
     st.title("👁️ ZENITH ARCHIVE")
     subject = st.selectbox("Subject Files:", ["Main Terminal"] + list(CHARACTERS.keys()))
     st.markdown("---")
-    st.info("System Status: OPERATIONAL\n\nArchitect: DisMonkey")
+    st.info("STATUS: LOGGED IN AS ARCHITECT\n\nSystem: DisMonkey | 2025")
 
-# 5. MAIN TERMINAL / HOME PAGE
+# 5. MAIN TERMINAL / CONNECTION MATRIX
 if subject == "Main Terminal":
     st.title("👁️ ZENITH LORE TERMINAL")
-    st.image("https://i.imgur.com/92fHkeq.png", use_container_width=True)
+    st.image("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200", use_container_width=True)
     st.markdown("### Accessing Fazbear Records... System Clear.")
+    st.write("Welcome, Architect. Use the sidebar to decrypt the true narratives of the animatronic curse.")
     
-    # THE CONNECTION WEB (THE MASTER MAP)
     st.subheader("🕸️ THE CONNECTION MATRIX")
-    nodes = [Node(id=name, label=name, shape="circularImage", image=data["img"], size=30) for name, data in CHARACTERS.items()]
+    nodes = [Node(id=name, label=name, shape="circularImage", image=data["img"], size=35) for name, data in CHARACTERS.items()]
     edges = [
         Edge(source="William Afton", target="Gabriel (Freddy)", label="Murderer (1985 MCI)", color="red"),
         Edge(source="The Puppet", target="Gabriel (Freddy)", label="Gave Life", color="blue"),
-        Edge(source="William Afton", target="Springtrap", label="Evolution", color="purple"),
-        Edge(source="William Afton", target="Michael Afton", label="Father", color="gray"),
-        Edge(source="William Afton", target="Elizabeth Afton", label="Father", color="gray"),
-        Edge(source="William Afton", target="Crying Child", label="Father", color="gray"),
+        Edge(source="William Afton", target="Springtrap", label="Evolution", color="purple")
     ]
-    config = Config(width=1000, height=550, directed=True, nodeHighlightBehavior=True, highlightColor="#00FF00")
+    config = Config(width=1200, height=600, directed=True, nodeHighlightBehavior=True, highlightColor="#ff4b4b")
     agraph(nodes=nodes, edges=edges, config=config)
 
 else:
-    # 6. CHARACTER VIEW
+    # 6. CHARACTER DATA ENTRY
     st.title(f"📊 DATA ENTRY: {subject}")
-    st.warning(CHARACTERS[subject]["msg"]) # The "System Greeting"
+    st.warning(f"**ARCHIVE MESSAGE:** {CHARACTERS[subject]['msg']}")
     
     tab1, tab2, tab3 = st.tabs(["🖼️ Visual Intel", "📜 Deep Lore", "🧬 Evolution"])
     
     with tab1:
-        st.image(CHARACTERS[subject]["img"], width=400)
+        st.image(CHARACTERS[subject]["img"], width=400, caption=f"Confirmed Visual: {subject}")
     
     with tab2:
         if llm:
-            with st.spinner("Analyzing Remnant..."):
-                prompt = f"""Analyze lore for {subject}. 
-                COMPLIANCE: Gabriel is an MCI victim (1985), NOT an Afton. 
-                William's kids are ONLY Michael, Elizabeth, and Crying Child."""
+            with st.spinner("Decrypting Remnant Data..."):
+                # FORCED LORE RULES
+                prompt = f"""
+                Analyze the character '{subject}'. 
+                RULES: 
+                - Gabriel is the soul in Freddy; he is a VICTIM of the 1985 MCI. 
+                - Gabriel is NOT William Afton's son. 
+                - Afton's children are ONLY Michael, Elizabeth, and the Crying Child.
+                Provide a detailed lore summary.
+                """
                 response = llm.invoke(prompt)
                 st.markdown(response.content)
-    
+        else:
+            st.error("AI Terminal Offline. Check GROQ_API_KEY.")
+            
     with tab3:
-        # PURE LORE SEQUENCE LOGIC
-        if "Afton" in subject or "Spring" in subject:
-            st.code("William Afton ➔ Springlock Failure ➔ Springtrap ➔ Scraptrap ➔ Glitchtrap")
-        elif "Gabriel" in subject:
-            st.code("Gabriel (Child) ➔ 1985 MCI ➔ Freddy Fazbear ➔ Molten Freddy ➔ Freed")
-        elif "Michael" in subject:
-            st.code("Michael Afton ➔ Foxy Bully ➔ Scooped (Ennard) ➔ Purple Corpse ➔ FFPS Fire")
-        elif "Elizabeth" in subject:
-            st.code("Elizabeth Afton ➔ Claw Incident ➔ Circus Baby ➔ Scrap Baby ➔ Freed")
+        st.subheader("Transition Sequence")
+        st.code(CHARACTERS[subject]["evo"], language="text")
