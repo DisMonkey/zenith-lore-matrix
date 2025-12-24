@@ -1,97 +1,90 @@
 import streamlit as st
 from streamlit_agraph import agraph, Node, Edge, Config
 from langchain_groq import ChatGroq
+import json
+import os
 
-# 1. SETUP
+# 1. SETUP & PERMANENT STORAGE
 st.set_page_config(page_title="Zenith Lore Matrix", layout="wide")
+
+# File to store characters permanently
+DB_FILE = "lore_registry.json"
+
+def load_lore():
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r") as f:
+            return json.load(f)
+    return {
+        "William Afton": {"img": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/0/0b/Springtrap_FNAF3.png", "type": "human"},
+        "Freddy Fazbear": {"img": "https://upload.wikimedia.org/wikipedia/en/2/22/Fnaf_character_freddy_fazbear.png", "type": "animatronic"},
+        "The Puppet": {"img": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/1/10/The_Puppet.png", "type": "spirit"}
+    }
+
+def save_lore(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f)
+
+if "lore_db" not in st.session_state:
+    st.session_state.lore_db = load_lore()
 
 # Connect to AI
 llm = None
 if "GROQ_API_KEY" in st.secrets:
     llm = ChatGroq(groq_api_key=st.secrets["GROQ_API_KEY"], model_name="llama-3.3-70b-versatile")
 
-# 2. UPDATED DATA (Fixed Gabriel & Added Evolution Chain)
-CHARACTERS = {
-    "Freddy Fazbear": "https://upload.wikimedia.org/wikipedia/en/2/22/Fnaf_character_freddy_fazbear.png",
-    "William Afton": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/1/1a/Crying_Child_8-bit.png", # Placeholder for human Afton
-    "Springtrap": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/4/4c/Springtrap_FNaF3.png",
-    "Scraptrap": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/0/05/Scraptrap_Pizzeria_Simulator.png",
-    "Glitchtrap": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/d/d3/Glitchtrap_Help_Wanted.png",
-    "Burntrap": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/6/60/Burntrap_Security_Breach.png",
-    "The Puppet": "https://static.wikia.nocookie.net/fivenightsatfreddys/images/1/10/The_Puppet.png"
-}
-
-# 3. SIDEBAR CONTROLS
+# 2. SIDEBAR: THE ARCHIVE COMMAND
 with st.sidebar:
     st.header("🗄️ ARCHIVE CONTROLS")
-    subject = st.selectbox("Select Subject:", ["Main Terminal"] + list(CHARACTERS.keys()))
-    st.info("Architect: DisMonkey")
+    subject = st.selectbox("Current Subjects:", ["Main Terminal"] + list(st.session_state.lore_db.keys()))
+    
+    st.markdown("---")
+    st.subheader("Add New Entity")
+    new_char = st.text_input("Name (e.g. Scraptrap):")
+    new_img = st.text_input("Image URL:")
+    if st.button("Commit to Archive"):
+        if new_char and new_img:
+            st.session_state.lore_db[new_char] = {"img": new_img, "type": "custom"}
+            save_lore(st.session_state.lore_db)
+            st.success(f"{new_char} added to permanent records!")
+            st.rerun()
 
-# 4. DYNAMIC LORE & EVOLUTION LOGIC
+# 3. LORE DISPLAY (With Gabriel Fix)
 if subject == "Main Terminal":
     st.title("👁️ ZENITH LORE ARCHIVE")
-    st.markdown("### Accessing Fazbear Historical Data...")
-    st.write("Select a subject to view their evolution through the franchise.")
+    st.write(f"The matrix is currently tracking {len(st.session_state.lore_db)} entities.")
+    st.image("https://images.unsplash.com/photo-1614728263952-84ea206f99b6?w=1200", use_container_width=True)
 else:
     st.header(f"📊 DATA ENTRY: {subject}")
     col1, col2 = st.columns([1, 2])
-    
     with col1:
-        st.image(CHARACTERS.get(subject), use_container_width=True)
-        
+        st.image(st.session_state.lore_db[subject]["img"], width=400)
     with col2:
         if llm:
             with st.spinner("Analyzing Remnant..."):
-                # FORCED KNOWLEDGE: Gabriel is the soul.
-                prompt = f"""
-                You are a Lore Historian. Provide a report on '{subject}'. 
-                CRITICAL FACT: Freddy Fazbear is possessed by GABRIEL. Never use the name Charles.
-                
-                Include:
-                1. Bio & Evolution: Explain their transition through different games.
-                2. Lore Contribution: What is their role in the timeline?
-                3. Deep Secret: A hidden detail or theory.
-                """
+                # HARD-CODED LORE TRUTH
+                prompt = f"Provide a lore profile for {subject}. TRUTH: Freddy Fazbear is Gabriel. Describe their evolution and importance to the Afton story."
                 response = llm.invoke(prompt)
                 st.markdown(response.content)
 
-# 5. THE EVOLUTION MATRIX (The Web)
+# 4. THE EVOLUTION MATRIX (With Connections)
 st.markdown("---")
-st.subheader("🕸️ THE EVOLUTION MATRIX")
+st.subheader("🕸️ THE CONNECTION MATRIX")
 
-# Define Nodes with unique colors for Afton's evolution
-nodes = [
-    Node(id="Afton", label="William Afton", color="#800080", size=25),
-    Node(id="Springtrap", label="Springtrap", color="#556B2F", size=25),
-    Node(id="Scraptrap", label="Scraptrap", color="#8B4513", size=25),
-    Node(id="Glitchtrap", label="Glitchtrap", color="#DA70D6", size=25),
-    Node(id="Burntrap", label="Burntrap", color="#FF4500", size=25),
-    Node(id="Freddy", label="Freddy Fazbear (Gabriel)", color="#654321", size=20),
-    Node(id="Puppet", label="The Puppet", color="#FFFFFF", size=20)
-]
+nodes = []
+for name, data in st.session_state.lore_db.items():
+    nodes.append(Node(id=name, label=name, shape="circularImage", image=data["img"], size=35))
 
-# Define Edges with evolution labels
+# Logic for Afton Family/Evolution lines
 edges = [
-    Edge(source="Afton", target="Springtrap", label="Springlock Failure"),
-    Edge(source="Springtrap", target="Scraptrap", label="Fire Survivor"),
-    Edge(source="Scraptrap", target="Glitchtrap", label="Digital Virus"),
-    Edge(source="Glitchtrap", target="Burntrap", label="Physical Rebirth"),
-    Edge(source="Afton", target="Puppet", label="First Murder"),
-    Edge(source="Puppet", target="Freddy", label="Gave Life")
+    Edge(source="William Afton", target="Freddy Fazbear", label="Killed Gabriel"),
+    Edge(source="The Puppet", target="Freddy Fazbear", label="Gave Life")
 ]
 
-# Highlighting Logic: When a user selects a character, the web emphasizes them
-config = Config(
-    width=1200, 
-    height=600, 
-    directed=True, 
-    nodeHighlightBehavior=True, # This enables the highlighting you asked for
-    highlightColor="#00E6FF", 
-    collapsible=True,
-    staticGraph=False
-)
+# Add specific evolution lines if the characters exist in your DB
+if "Springtrap" in st.session_state.lore_db:
+    edges.append(Edge(source="William Afton", target="Springtrap", label="Evolution"))
+if "Scraptrap" in st.session_state.lore_db:
+    edges.append(Edge(source="Springtrap", target="Scraptrap", label="Evolution"))
 
+config = Config(width=1200, height=700, directed=True, nodeHighlightBehavior=True, highlightColor="#ff4b4b")
 agraph(nodes=nodes, edges=edges, config=config)
-
-st.markdown("---")
-st.markdown("<div style='text-align: center; color: #555;'>SYSTEM: ZENITH | ARCHITECT: <b>DisMonkey</b></div>", unsafe_allow_html=True)
